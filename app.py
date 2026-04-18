@@ -1,4 +1,3 @@
-[caculetor.txt](https://github.com/user-attachments/files/26845502/caculetor.txt)
 # app.py
 import itertools
 import re
