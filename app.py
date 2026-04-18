@@ -177,3 +177,4 @@ if st.button("🚀 Generar Tabla", type="primary"):
             "📥 Descargar Excel",
             data=buffer,
             file_name="tabla_verdad.xlsx"
+        )
