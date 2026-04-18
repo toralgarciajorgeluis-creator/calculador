@@ -176,3 +176,21 @@ if st.button("🚀 Generar Tabla", type="primary"):
             data=buffer,
             file_name="tabla_verdad.xlsx"
         )
+        if st.button("🚀 Generar Tabla", type="primary"):
+
+    expr = st.session_state.expr
+
+    if expr == "":
+        st.warning("Expresión vacía")
+    else:
+        variables = ["A","B","C","D","E","F"]
+        vars_usadas = [v for v in variables if v in expr]
+
+        combinaciones = list(itertools.product([0,1], repeat=len(vars_usadas)))
+
+        # ✅ CREA EL EXCEL AQUÍ
+        wb = Workbook()
+        ws = wb.active
+
+        headers = vars_usadas + ["Resultado"]
+        ws.append(headers)
