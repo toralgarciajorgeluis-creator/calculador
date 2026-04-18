@@ -1,45 +1,27 @@
-<title>Tabla de Verdad</title>
-</head>
-<body>
-  <h2>Calculadora de Tabla de Verdad</h2>
+# app.py
+import streamlit as st
+import pandas as pd
+from truth_table import generar_tabla
 
-  <input type="text" id="expresion" placeholder="Ej: A && B || !C">
-  <button onclick="generarTabla()">Calcular</button>
+st.title("Calculadora de Tabla de Verdad")
 
-  <table border="1" id="tabla"></table>
+expr = st.text_input("Ingresa la expresión lógica (ej: A AND B OR NOT C)")
 
-  <script>
-    function generarTabla() {
-      let expr = document.getElementById("expresion").value;
-      let variables = ["A", "B", "C"];
-      let tabla = document.getElementById("tabla");
-      tabla.innerHTML = "";
+if st.button("Generar tabla"):
+    if expr.strip() == "":
+        st.error("Por favor ingresa una expresión.")
+    else:
+        try:
+            variables, tabla = generar_tabla(expr)
 
-      // Encabezado
-      let header = "<tr>";
-      variables.forEach(v => header += "<th>" + v + "</th>");
-      header += "<th>Resultado</th></tr>";
-      tabla.innerHTML += header;
+            columnas = variables + ["Resultado"]
+            df = pd.DataFrame(tabla, columns=columnas)
 
-      // Combinaciones
-      for (let i = 0; i < 8; i++) {
-        let valores = {
-          A: !!(i & 1),
-          B: !!(i & 2),
-          C: !!(i & 4)
-        };
+            st.dataframe(df)
 
-        let resultado = eval(
-          expr.replace(/A|B|C/g, m => valores[m])
-        );
+            # Descargar CSV
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button("Descargar CSV", csv, "tabla.csv", "text/csv")
 
-        let fila = "<tr>";
-        variables.forEach(v => fila += "<td>" + valores[v] + "</td>");
-        fila += "<td>" + resultado + "</td></tr>";
-
-        tabla.innerHTML += fila;
-      }
-    }
-  </script>
-</body>
-</html>
+        except:
+            st.error("Error en la expresión lógica.")
