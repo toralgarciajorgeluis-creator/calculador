@@ -3,34 +3,63 @@ import itertools
 import pandas as pd
 import re
 
-# ---------------------------
-# CONFIG
-# ---------------------------
-st.set_page_config(page_title="Calculadora Lógica", layout="centered")
+# ===============================
+# CONFIGURACIÓN
+# ===============================
+st.set_page_config(
+    page_title="Calculadora Lógica",
+    page_icon="🧮",
+    layout="centered"
+)
 
-# ---------------------------
+# ===============================
+# ESTILOS (CSS)
+# ===============================
+st.markdown("""
+<style>
+.result-1 {
+    background-color: #d4edda;
+    color: #155724;
+    font-weight: bold;
+    text-align: center;
+}
+.result-0 {
+    background-color: #f8d7da;
+    color: #721c24;
+    font-weight: bold;
+    text-align: center;
+}
+.expr-box {
+    background-color: #f1f3f6;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+}
+.calc-btn {
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ===============================
 # FUNCIONES LÓGICAS
-# ---------------------------
-
+# ===============================
 def traducir_expresion(expr):
     expr = expr.upper().strip()
 
-    # Normalizar operadores
     expr = expr.replace("<=", "→")
     expr = expr.replace("->", "→")
 
-    # Reemplazos
     expr = expr.replace("Y", " and ")
     expr = expr.replace("O", " or ")
     expr = expr.replace("NO", " not ")
     expr = expr.replace("XOR", " != ")
 
-    # Implicación
     while "→" in expr:
         izq, der = expr.split("→", 1)
         expr = f"(not ({izq}) or ({der}))"
 
-    # Bicondicional
     while "↔" in expr:
         izq, der = expr.split("↔", 1)
         expr = f"(({izq}) and ({der})) or (not ({izq}) and not ({der}))"
@@ -40,10 +69,9 @@ def traducir_expresion(expr):
 
 def evaluar(expr, valores):
     try:
-        expr_python = traducir_expresion(expr)
-        return int(eval(expr_python, {}, valores))
+        return int(eval(traducir_expresion(expr), {}, valores))
     except:
-        return "Error"
+        return None
 
 
 def detectar_variables(expr):
@@ -52,88 +80,94 @@ def detectar_variables(expr):
 
 def generar_tabla(expr, variables):
     combinaciones = list(itertools.product([0, 1], repeat=len(variables)))
-    tabla = []
+    filas = []
 
     for comb in combinaciones:
         valores = dict(zip(variables, comb))
-        resultado = evaluar(expr, valores)
-        tabla.append({**valores, "Resultado": resultado})
+        res = evaluar(expr, valores)
+        filas.append({**valores, "Resultado": res})
 
-    return tabla
+    return filas
 
 
-# ---------------------------
+# ===============================
 # ESTADO
-# ---------------------------
+# ===============================
 if "expr" not in st.session_state:
     st.session_state.expr = ""
 
-# ---------------------------
+# ===============================
 # UI
-# ---------------------------
-
-st.title("📊 Calculadora de Tabla de Verdad")
-st.write("Construye tu expresión haciendo clic.")
-
-# ---------------------------
-# CONSTRUCTOR
-# ---------------------------
+# ===============================
+st.title("🧮 Calculadora de Tabla de Verdad")
+st.caption("Resultados visuales tipo calculadora profesional")
 
 st.subheader("🛠️ Constructor de Expresión")
 
+# VARIABLES
 cols = st.columns(6)
-variables = ["A", "B", "C", "D", "E", "F"]
+for i, v in enumerate(["A", "B", "C", "D", "E", "F"]):
+    if cols[i].button(v):
+        st.session_state.expr += v
+        st.rerun()
 
-for i, var in enumerate(variables):
-    if cols[i].button(var):
-        st.session_state.expr += var
-
+# OPERADORES
 cols2 = st.columns(6)
-ops = ["Y", "O", "NO", "XOR", "→", "↔"]
-
-for i, op in enumerate(ops):
+for i, op in enumerate(["Y", "O", "NO", "XOR", "→", "↔"]):
     if cols2[i].button(op):
         st.session_state.expr += f" {op} "
+        st.rerun()
 
+# PARÉNTESIS Y LIMPIAR
 cols3 = st.columns(3)
-
 if cols3[0].button("("):
     st.session_state.expr += "("
+    st.rerun()
 
 if cols3[1].button(")"):
     st.session_state.expr += ")"
+    st.rerun()
 
-if cols3[2].button("Limpiar"):
+if cols3[2].button("🧹 Limpiar"):
     st.session_state.expr = ""
+    st.rerun()
 
-# ---------------------------
-# INPUT
-# ---------------------------
+# EXPRESIÓN
+st.markdown(
+    f"<div class='expr-box'>{st.session_state.expr or 'Escribe tu expresión...'}</div>",
+    unsafe_allow_html=True
+)
 
-expr = st.text_input("Expresión:", value=st.session_state.expr)
-
-# ---------------------------
-# BOTÓN PRINCIPAL
-# ---------------------------
-
+# ===============================
+# GENERAR TABLA
+# ===============================
 if st.button("🚀 Generar Tabla"):
+    expr = st.session_state.expr
     variables = detectar_variables(expr)
 
     if not variables:
-        st.error("No hay variables válidas (usa A-F)")
+        st.error("❌ No se detectaron variables válidas (A–F)")
     else:
         tabla = generar_tabla(expr, variables)
-
-        st.success(f"Tabla generada para {len(variables)} variable(s)")
-
         df = pd.DataFrame(tabla)
-        st.dataframe(df, use_container_width=True)
 
-        # Descargar CSV
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            "📥 Descargar CSV",
-            csv,
-            "tabla_logica.csv",
-            "text/csv"
-        )
+        st.success(f"✔ Tabla generada para {len(variables)} variable(s)")
+
+        # Mostrar tabla con colores
+        st.markdown("### 📊 Tabla de Verdad")
+
+        for _, row in df.iterrows():
+            cols = st.columns(len(variables) + 1)
+            for i, v in enumerate(variables):
+                cols[i].write(row[v])
+
+            if row["Resultado"] == 1:
+                cols[-1].markdown("<div class='result-1'>1</div>", unsafe_allow_html=True)
+            elif row["Resultado"] == 0:
+                cols[-1].markdown("<div class='result-0'>0</div>", unsafe_allow_html=True)
+            else:
+                cols[-1].write("Error")
+
+        # DESCARGAR
+        csv = df.to_csv(index=False).encode("utf-8")
+        st.download_button("📥 Descargar CSV", csv, "tabla_logica.csv", "text/csv")
