@@ -1,98 +1,52 @@
-import streamlit as st
 import itertools
 
-st.set_page_config(page_title="Calculadora de Tabla de Verdad")
+def traducir_expresion(expr):
+    # Normalizar entrada
+    expr = expr.upper().strip()
 
-st.title("🧮 Calculadora de Tabla de Verdad")
+    # Reemplazos de operadores
+    expr = expr.replace("<=", "→")
+    expr = expr.replace("->", "→")
+    expr = expr.replace("Y", " and ")
+    expr = expr.replace("O", " or ")
+    expr = expr.replace("NO", " not ")
+    expr = expr.replace("XOR", " ^ ")
 
-# Inicializar expresión
-if "expr" not in st.session_state:
-    st.session_state.expr = ""
+    # Implicación: A → B = (not A) or B
+    if "→" in expr:
+        partes = expr.split("→")
+        izquierda = partes[0].strip()
+        derecha = partes[1].strip()
+        expr = f"(not ({izquierda}) or ({derecha}))"
 
-# Función para agregar texto
-def agregar(valor):
-    st.session_state.expr += valor
+    return expr
 
-# Función limpiar
-def limpiar():
-    st.session_state.expr = ""
 
-# Mostrar expresión
-st.subheader("Constructor de Expresión")
-st.text_input("Expresión:", value=st.session_state.expr, key="input_expr", disabled=True)
-
-# Botones de variables
-st.write("### Variables")
-cols = st.columns(6)
-variables = ["A", "B", "C", "D", "E", "F"]
-
-for i, v in enumerate(variables):
-    if cols[i].button(v):
-        agregar(v)
-
-# Botones de operadores
-st.write("### Operadores")
-cols = st.columns(6)
-
-if cols[0].button("Y"):
-    agregar(" and ")
-if cols[1].button("O"):
-    agregar(" or ")
-if cols[2].button("NO"):
-    agregar(" not ")
-if cols[3].button("XOR"):
-    agregar(" ^ ")
-if cols[4].button("→"):
-    agregar(" <= ")  # A → B ≈ A <= B
-if cols[5].button("↔"):
-    agregar(" == ")
-
-# Paréntesis
-cols = st.columns(2)
-if cols[0].button("("):
-    agregar("(")
-if cols[1].button(")"):
-    agregar(")")
-
-# Limpiar
-st.button("🗑 Limpiar", on_click=limpiar)
-
-# Evaluación
-def evaluar(expr, valores):
+def evaluar_expresion(expr, valores):
     try:
-        return eval(expr, {}, valores)
+        expr_python = traducir_expresion(expr)
+        return int(eval(expr_python, {}, valores))
     except:
-        return None
+        return "Error"
 
-# Generar tabla
-if st.button("🚀 Generar Tabla"):
-    expr = st.session_state.expr
 
-    if expr == "":
-        st.warning("Construye una expresión primero")
-    else:
-        vars_usadas = [v for v in variables if v in expr]
+def generar_tabla(expr, variables):
+    combinaciones = list(itertools.product([0, 1], repeat=len(variables)))
+    tabla = []
 
-        combinaciones = list(itertools.product([0, 1], repeat=len(vars_usadas)))
+    for comb in combinaciones:
+        valores = dict(zip(variables, comb))
+        resultado = evaluar_expresion(expr, valores)
+        tabla.append({**valores, "Resultado": resultado})
 
-        st.write("### Tabla de Verdad")
+    return tabla
 
-        # Encabezado
-        cols = st.columns(len(vars_usadas) + 1)
-        for i, v in enumerate(vars_usadas):
-            cols[i].write(f"**{v}**")
-        cols[-1].write("**Resultado**")
 
-        # Filas
-        for comb in combinaciones:
-            valores = dict(zip(vars_usadas, comb))
-            resultado = evaluar(expr, valores)
+# 🔥 EJEMPLO DE USO
+expr = "A <= B"   # el usuario escribe esto
+variables = ["A", "B"]
 
-            cols = st.columns(len(vars_usadas) + 1)
-            for i, val in enumerate(comb):
-                cols[i].write(val)
+tabla = generar_tabla(expr, variables)
 
-            if resultado is None:
-                cols[-1].write("Error")
-            else:
-                cols[-1].write(int(bool(resultado)))
+for fila in tabla:
+    print(fila)
