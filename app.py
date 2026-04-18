@@ -1,5 +1,6 @@
 import streamlit as st
 import itertools
+from openpyxl import Workbook
 from io import BytesIO
 
 st.set_page_config(layout="centered")
@@ -7,7 +8,6 @@ st.set_page_config(layout="centered")
 # ===== CSS =====
 st.markdown("""
 <style>
-
 h1 {text-align:center;}
 
 .subtitle {
@@ -23,7 +23,6 @@ div.stButton > button {
     background:#f3f4f6;
     border:1px solid #e5e7eb;
 }
-
 div.stButton > button:hover {
     background:#6366f1;
     color:white;
@@ -62,7 +61,6 @@ th, td {
     text-align:center;
     padding:8px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,6 +74,15 @@ def add(x):
 def clear():
     st.session_state.expr = ""
 
+# ===== EVALUADOR SEGURO =====
+def evaluar(expr, valores):
+    try:
+        expr_py = expr.replace("XOR", "^")
+        return eval(expr_py, {}, valores)
+    except Exception as e:
+        st.error(f"Error en expresión: {e}")
+        return None
+
 # ===== UI =====
 st.title("Calculadora de Tabla de la Verdad")
 st.markdown('<div class="subtitle">Construye tu expresión haciendo clic.</div>', unsafe_allow_html=True)
@@ -83,7 +90,6 @@ st.markdown('<div class="subtitle">Construye tu expresión haciendo clic.</div>'
 # ===== CONSTRUCTOR =====
 st.subheader("🛠 Constructor de Expresión")
 
-# BOTONES
 cols = st.columns(6)
 for i, v in enumerate(["A","B","C","D","E","F"]):
     if cols[i].button(v):
@@ -111,86 +117,69 @@ col1, col2 = st.columns([1,3])
 if col1.button("🗑 Limpiar"):
     clear()
 
-# Caja gris expresión
 col2.markdown(f'<div class="box">{st.session_state.expr or "(vacío)"}</div>', unsafe_allow_html=True)
 
 # ===== GENERAR =====
-def evaluar(expr, valores):
-    try:
-        return eval(expr, {}, valores)
-    except:
-        return None
-
 if st.button("🚀 Generar Tabla", type="primary"):
 
     expr = st.session_state.expr
 
-    if expr == "":
+    if expr.strip() == "":
         st.warning("Expresión vacía")
     else:
         variables = ["A","B","C","D","E","F"]
         vars_usadas = [v for v in variables if v in expr]
 
-        combinaciones = list(itertools.product([0,1], repeat=len(vars_usadas)))
+        if len(vars_usadas) == 0:
+            st.error("No hay variables válidas")
+        else:
+            combinaciones = list(itertools.product([0,1], repeat=len(vars_usadas)))
 
-        resultados = []
+            # ✅ CREAR EXCEL (ARREGLADO)
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Tabla de Verdad"
 
-        # Excel
-        ws = wb.active
+            headers = vars_usadas + ["Resultado"]
+            ws.append(headers)
 
-        headers = vars_usadas + ["Resultado"]
-        ws.append(headers)
+            # Mensaje verde
+            st.markdown(f'<div class="success">✔ Tabla generada para {len(vars_usadas)} variable(s)</div>', unsafe_allow_html=True)
 
-        # Mensaje verde
-        st.markdown(f'<div class="success">✔ Tabla generada para {len(vars_usadas)} variable(s)</div>', unsafe_allow_html=True)
+            # Tabla HTML
+            html = "<table><tr>"
+            for h in headers:
+                html += f"<th>{h}</th>"
+            html += "</tr>"
 
-        # Tabla HTML
-        html = "<table><tr>"
-        for h in headers:
-            html += f"<th>{h}</th>"
-        html += "</tr>"
+            for comb in combinaciones:
+                valores = dict(zip(vars_usadas, comb))
+                res = evaluar(expr, valores)
 
-        for comb in combinaciones:
-            valores = dict(zip(vars_usadas, comb))
-            res = evaluar(expr, valores)
-            res = int(bool(res)) if res is not None else "Error"
+                if res is None:
+                    res_val = "Error"
+                else:
+                    res_val = int(bool(res))
 
-            ws.append(list(comb)+[res])
+                ws.append(list(comb) + [res_val])
 
-            html += "<tr>"
-            for v in comb:
-                html += f"<td>{v}</td>"
-            html += f"<td>{res}</td></tr>"
+                html += "<tr>"
+                for v in comb:
+                    html += f"<td>{v}</td>"
+                html += f"<td>{res_val}</td></tr>"
 
-        html += "</table>"
+            html += "</table>"
 
-        st.markdown(html, unsafe_allow_html=True)
+            st.markdown(html, unsafe_allow_html=True)
 
-        # Descargar Excel
-        buffer = BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
+            # Descargar Excel
+            buffer = BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
 
-        st.download_button(
-            "📥 Descargar Excel",
-            data=buffer,
-            file_name="tabla_verdad.xlsx"
-        )
-        if st.button("🚀 Generar Tabla", type="primary"):
-
-    expr = st.session_state.expr
-
-    if expr == "":
-        st.warning("Expresión vacía")
-    else:
-        variables = ["A","B","C","D","E","F"]
-        vars_usadas = [v for v in variables if v in expr]
-
-        combinaciones = list(itertools.product([0,1], repeat=len(vars_usadas)))
-
-        # ✅ CREA EL EXCEL AQUÍ
-        wb = Workbook()
-        ws = wb.active
-
-        headers = vars_usadas + ["Resultado"]
-        ws.append(headers)
+            st.download_button(
+                "📥 Descargar Excel",
+                data=buffer,
+                file_name="tabla_verdad.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
