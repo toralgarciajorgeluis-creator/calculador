@@ -1,7 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Tabla de Verdad</title>
+<title>Tabla de Verdad</title>
 </head>
 <body>
   <h2>Calculadora de Tabla de Verdad</h2>
