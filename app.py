@@ -1,27 +1,44 @@
-# app.py
 import streamlit as st
-import pandas as pd
-from truth_table import generar_tabla
+import itertools
 
-st.title("Calculadora de Tabla de Verdad")
+st.set_page_config(page_title="Calculadora de Tabla de Verdad")
 
-expr = st.text_input("Ingresa la expresión lógica (ej: A AND B OR NOT C)")
+st.title("🧮 Calculadora de Tabla de Verdad")
 
-if st.button("Generar tabla"):
-    if expr.strip() == "":
-        st.error("Por favor ingresa una expresión.")
+# Variables disponibles
+variables = ["A", "B", "C", "D", "E", "F"]
+
+expr = st.text_input("Escribe la expresión lógica (ej: A and B or not C):")
+
+def evaluar(expr, valores):
+    try:
+        return eval(expr, {}, valores)
+    except:
+        return "Error"
+
+if st.button("Generar Tabla"):
+    if expr == "":
+        st.warning("Escribe una expresión primero")
     else:
-        try:
-            variables, tabla = generar_tabla(expr)
+        # Detectar variables usadas
+        vars_usadas = [v for v in variables if v in expr]
 
-            columnas = variables + ["Resultado"]
-            df = pd.DataFrame(tabla, columns=columnas)
+        combinaciones = list(itertools.product([0, 1], repeat=len(vars_usadas)))
 
-            st.dataframe(df)
+        st.write("### Tabla de Verdad")
 
-            # Descargar CSV
-            csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("Descargar CSV", csv, "tabla.csv", "text/csv")
+        # Encabezado
+        cols = st.columns(len(vars_usadas) + 1)
+        for i, v in enumerate(vars_usadas):
+            cols[i].write(f"**{v}**")
+        cols[-1].write("**Resultado**")
 
-        except:
-            st.error("Error en la expresión lógica.")
+        # Filas
+        for comb in combinaciones:
+            valores = dict(zip(vars_usadas, comb))
+            resultado = evaluar(expr, valores)
+
+            cols = st.columns(len(vars_usadas) + 1)
+            for i, val in enumerate(comb):
+                cols[i].write(val)
+            cols[-1].write(int(bool(resultado)))
