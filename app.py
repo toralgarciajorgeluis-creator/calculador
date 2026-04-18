@@ -136,7 +136,6 @@ if st.button("🚀 Generar Tabla", type="primary"):
         resultados = []
 
         # Excel
-        wb = Workbook()
         ws = wb.active
 
         headers = vars_usadas + ["Resultado"]
