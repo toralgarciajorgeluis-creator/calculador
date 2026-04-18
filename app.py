@@ -1,39 +1,48 @@
-# app.py
-import itertools
-import re
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tabla de Verdad</title>
+</head>
+<body>
+  <h2>Calculadora de Tabla de Verdad</h2>
 
-def extraer_variables(expr):
-    return sorted(set(re.findall(r'[A-Z]', expr)))
+  <input type="text" id="expresion" placeholder="Ej: A && B || !C">
+  <button onclick="generarTabla()">Calcular</button>
 
-def generar_combinaciones(n):
-    return list(itertools.product([0, 1], repeat=n))
+  <table border="1" id="tabla"></table>
 
-def evaluar_expresion(expr, valores):
-    # Reemplazos seguros
-    expr = expr.replace("AND", "and")
-    expr = expr.replace("OR", "or")
-    expr = expr.replace("NOT", "not")
-    expr = expr.replace("XOR", "^")
+  <script>
+    function generarTabla() {
+      let expr = document.getElementById("expresion").value;
+      let variables = ["A", "B", "C"];
+      let tabla = document.getElementById("tabla");
+      tabla.innerHTML = "";
 
-    for var, val in valores.items():
-        expr = expr.replace(var, str(val))
+      // Encabezado
+      let header = "<tr>";
+      variables.forEach(v => header += "<th>" + v + "</th>");
+      header += "<th>Resultado</th></tr>";
+      tabla.innerHTML += header;
 
-    try:
-        resultado = eval(expr)
-        return int(resultado)
-    except:
-        return "Error"
+      // Combinaciones
+      for (let i = 0; i < 8; i++) {
+        let valores = {
+          A: !!(i & 1),
+          B: !!(i & 2),
+          C: !!(i & 4)
+        };
 
-def generar_tabla(expr):
-    variables = extraer_variables(expr)
-    combinaciones = generar_combinaciones(len(variables))
+        let resultado = eval(
+          expr.replace(/A|B|C/g, m => valores[m])
+        );
 
-    tabla = []
+        let fila = "<tr>";
+        variables.forEach(v => fila += "<td>" + valores[v] + "</td>");
+        fila += "<td>" + resultado + "</td></tr>";
 
-    for comb in combinaciones:
-        valores = dict(zip(variables, comb))
-        resultado = evaluar_expresion(expr, valores)
-        fila = list(comb) + [resultado]
-        tabla.append(fila)
-
-    return variables, tabla
+        tabla.innerHTML += fila;
+      }
+    }
+  </script>
+</body>
+</html>
